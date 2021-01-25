@@ -1,17 +1,21 @@
 package com.example.websocket.websocket;
 
 import com.alibaba.fastjson.JSONObject;
+import lombok.Data;
+import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import javax.websocket.*;
 import javax.websocket.server.ServerEndpoint;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 //@ServerEndpoint("/websocket/{user}")
 @ServerEndpoint("/websocket")
 @Component
+@Data
 public class WebSocketServer {
     private static final Logger log = LoggerFactory.getLogger(WebSocketServer.class);
     //静态变量，用来记录当前在线连接数。应该把它设计成线程安全的。
@@ -19,8 +23,9 @@ public class WebSocketServer {
     //concurrent包的线程安全Set，用来存放每个客户端对应的MyWebSocket对象。
     private static CopyOnWriteArraySet<WebSocketServer> webSocketSet = new CopyOnWriteArraySet<WebSocketServer>();
     //订阅业务
-    private static CopyOnWriteArraySet<String> webServiceSet = new CopyOnWriteArraySet<String>();
-
+    private static ConcurrentHashMap<String,WebSocketServer> webServiceMap = new ConcurrentHashMap<>();
+    //当前业务通道名
+    private static String channel;
     //与某个客户端的连接会话，需要通过它来给客户端发送数据
     private Session session;
 
@@ -51,6 +56,9 @@ public class WebSocketServer {
         webSocketSet.remove(this);  //从set中删除
         subOnlineCount();           //在线数减1
         log.info("有一连接关闭！当前在线人数为" + getOnlineCount());
+        if(!Strings.isEmpty(channel)){
+            webServiceMap.remove(channel);
+        }
     }
 
     /**
@@ -61,8 +69,11 @@ public class WebSocketServer {
     @OnMessage
     public void onMessage(String message, Session session) {
         log.info("来自客户端的消息:" + message);
-        //插入业务
-        webServiceSet.add(JSONObject.parseObject(message).getString("service"));
+        //获取消息
+        //WebsocketMessage websocketMessage = JSONObject.parseObject(message, WebsocketMessage.class);
+        //插入业务 可根据不同channel 做各类业务消息推送
+        //webServiceSet.add(websocketMessage.getChannel());
+        webServiceMap.put("test",this);
         try {
             //可在此处推送初始化数据
             this.sendMessage("初始化数据");
@@ -82,21 +93,23 @@ public class WebSocketServer {
         error.printStackTrace();
     }
 
-    public synchronized void sendMessage(String message) {
+    public  void sendMessage(String message) {
         this.session.getAsyncRemote().sendText(message);
     }
 
     /**
      * 向指定业务推送自定义消息
      */
-    public synchronized void sendInfo(String service, String message) {
+    public  void sendInfo(String channel, String message) {
         log.info(message);
-        for (WebSocketServer webSocketServer : webSocketSet) {
-            if (webServiceSet.contains(service)) {
-                webSocketServer.session.getAsyncRemote().sendText(message);
-            }
-        }
+        WebSocketServer webSocketServer = webServiceMap.get(channel);
+        webSocketServer.sendMessage(message);
+    }
 
+    public static void redisSendMsg(WebsocketMessage msg){
+        WebSocketServer webSocketServer = webServiceMap.get(msg.getChannel());
+        webSocketServer.sendMessage(JSONObject.toJSONString(msg));
+        log.info("message:{}",JSONObject.toJSONString(msg));
     }
 
     private static synchronized int getOnlineCount() {
