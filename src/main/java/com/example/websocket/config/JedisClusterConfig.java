@@ -3,13 +3,14 @@ package com.example.websocket.config;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisCluster;
 
 import java.util.HashSet;
 import java.util.Set;
 
-//@Configuration
+@Configuration
 public class JedisClusterConfig {
     @Autowired
     private RedisProperties properties;

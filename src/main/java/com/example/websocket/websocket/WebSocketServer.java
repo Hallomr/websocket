@@ -20,7 +20,7 @@ public class WebSocketServer {
     private static final Logger log = LoggerFactory.getLogger(WebSocketServer.class);
     //静态变量，用来记录当前在线连接数。应该把它设计成线程安全的。
     private static int onlineCount = 0;
-    //concurrent包的线程安全Set，用来存放每个客户端对应的MyWebSocket对象。
+    //concurrent包的线程安全Set，用来存放每个客户端对应的WebSocket对象。
     private static CopyOnWriteArraySet<WebSocketServer> webSocketSet = new CopyOnWriteArraySet<WebSocketServer>();
     //订阅业务
     private static ConcurrentHashMap<String,WebSocketServer> webServiceMap = new ConcurrentHashMap<>();
@@ -39,7 +39,7 @@ public class WebSocketServer {
         webSocketSet.add(this);
         //在线数加1
         addOnlineCount();
-        log.info("有新连接加入！当前在线人数为" + getOnlineCount());
+        log.info("有新连接加入！当前在线数为" + getOnlineCount());
         try {
             sendMessage("连接成功");
         } catch (Exception e) {
@@ -55,7 +55,7 @@ public class WebSocketServer {
     public void onClose() {
         webSocketSet.remove(this);  //从set中删除
         subOnlineCount();           //在线数减1
-        log.info("有一连接关闭！当前在线人数为" + getOnlineCount());
+        log.info("有一连接关闭！当前在线数为" + getOnlineCount());
         if(!Strings.isEmpty(channel)){
             webServiceMap.remove(channel);
         }
